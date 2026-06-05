@@ -17,11 +17,27 @@ from auth import create_access_token, decode_access_token
 import asyncio
 from wb_sync import WBSync
 from models import Stock, CompanyApiKey
+from contextlib import asynccontextmanager
+
 
 # Создаём таблицы
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Seller Stock API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Запуск при старте
+    from scheduler import start_scheduler
+    start_scheduler()
+    yield
+    # Остановка при завершении
+    from scheduler import stop_scheduler
+    stop_scheduler()
+
+app = FastAPI(
+    title="Seller Stock API",
+    lifespan=lifespan
+)
+
 security = HTTPBearer()
 
 @app.get("/")

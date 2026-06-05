@@ -1,0 +1,62 @@
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from datetime import datetime
+import logging
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Глобальный планировщик
+scheduler = BackgroundScheduler()
+
+def sync_all_users():
+    """Фоновая задача: синхронизация для всех активных пользователей"""
+    logger.info(f"Starting scheduled sync at {datetime.now()}")
+    
+    try:
+        from database import SessionLocal
+        from models import User, CompanyApiKey
+        from wb_sync import WBSync
+        
+        db = SessionLocal()
+        
+        # Находим всех пользователей с активным API-ключом WB
+        users_with_keys = db.query(User.id).join(CompanyApiKey).filter(
+            CompanyApiKey.company_id == 1,  # WB
+            CompanyApiKey.is_active == True
+        ).distinct().all()
+        
+        logger.info(f"Found {len(users_with_keys)} users with WB API key")
+        
+        for user in users_with_keys:
+            try:
+                logger.info(f"Syncing user {user.id}...")
+                syncer = WBSync(db, user.id)
+                result = syncer.full_sync()
+                logger.info(f"User {user.id} sync completed: {result}")
+            except Exception as e:
+                logger.error(f"Failed to sync user {user.id}: {e}")
+        
+        db.close()
+        
+    except Exception as e:
+        logger.error(f"Sync task failed: {e}")
+
+def start_scheduler():
+    """Запускает планировщик"""
+    # Добавляем задачу: каждые 30 минут
+    scheduler.add_job(
+        func=sync_all_users,
+        trigger=IntervalTrigger(minutes=3),
+        id="wb_sync_job",
+        replace_existing=True
+    )
+    
+    scheduler.start()
+    logger.info("Scheduler started! Sync will run every 30 minutes.")
+
+def stop_scheduler():
+    """Останавливает планировщик"""
+    scheduler.shutdown()
+    logger.info("Scheduler stopped.")
