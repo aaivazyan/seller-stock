@@ -54,7 +54,7 @@ def start_scheduler():
     )
     
     scheduler.start()
-    logger.info("Scheduler started! Sync will run every 30 minutes.")
+    logger.info("Scheduler started! Sync will run every 3 minutes.")
 
 def stop_scheduler():
     """Останавливает планировщик"""
