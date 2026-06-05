@@ -45,16 +45,17 @@ def sync_all_users():
 
 def start_scheduler():
     """Запускает планировщик"""
-    # Добавляем задачу: каждые 30 минут
+    # Добавляем задачу: каждые N минут
+    N=15
     scheduler.add_job(
         func=sync_all_users,
-        trigger=IntervalTrigger(minutes=3),
+        trigger=IntervalTrigger(minutes=N),
         id="wb_sync_job",
         replace_existing=True
     )
     
     scheduler.start()
-    logger.info("Scheduler started! Sync will run every 3 minutes.")
+    logger.info(f"Scheduler started! Sync will run every {N} minutes.")
 
 def stop_scheduler():
     """Останавливает планировщик"""
