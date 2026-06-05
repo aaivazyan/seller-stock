@@ -23,6 +23,26 @@ from contextlib import asynccontextmanager
 # Создаём таблицы
 Base.metadata.create_all(bind=engine)
 
+def init_companies():
+    """Создаёт компании WB, Ozon, MyWarehouse при первом запуске"""
+    from models import Company
+    from database import SessionLocal
+    
+    db = SessionLocal()
+    companies = ["WB", "Ozon", "MyWarehouse"]
+    
+    for name in companies:
+        existing = db.query(Company).filter(Company.name == name).first()
+        if not existing:
+            new_company = Company(name=name)
+            db.add(new_company)
+    
+    db.commit()
+    db.close()
+
+# Инициализируем компании
+init_companies()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Запуск при старте
