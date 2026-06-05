@@ -45,7 +45,7 @@ class WBSync:
         }
         
         response = requests.post(url, json=payload, headers=self._get_headers())
-        print(f"[WB API] POST /content/v2/get/cards/list -> Status: {response.status_code}")
+        # print(f"[WB API] POST /content/v2/get/cards/list -> Status: {response.status_code}")  # закомментировано
         
         if response.status_code != 200:
             print(f"[WB API] Error response: {response.text[:500]}")
@@ -54,7 +54,7 @@ class WBSync:
         return response.json()
     
     def sync_products(self) -> Dict:
-        print(f"Syncing products for user {self.user_id}")
+        print(f"User {self.user_id}: syncing products...")
         
         all_skus: Set[str] = set()
         cursor = None
@@ -63,7 +63,7 @@ class WBSync:
         
         while True:
             page += 1
-            print(f"Fetching products page {page}...")
+            # print(f"Fetching products page {page}...")  # закомментировано
             
             if cursor is None:
                 request_cursor = {"limit": limit}
@@ -89,14 +89,12 @@ class WBSync:
                 
                 all_skus.add(vendor_code)
                 
-                # Ищем товар
                 product = self.db.query(Product).filter(
                     Product.user_id == self.user_id,
                     Product.sku == vendor_code
                 ).first()
                 
                 if product:
-                    # Обновляем основные поля
                     product.name = card.get("title", "Без названия")
                     product.wb_nm_id = nm_id
                     product.imt_id = card.get("imtID")
@@ -108,7 +106,6 @@ class WBSync:
                     product.need_kiz = card.get("needKiz", False)
                     product.kiz_marked = card.get("kizMarked", False)
                 else:
-                    # Создаём новый товар
                     product = Product(
                         user_id=self.user_id,
                         sku=vendor_code,
@@ -127,7 +124,6 @@ class WBSync:
                     self.db.add(product)
                     self.db.flush()
                 
-                # Обрабатываем размеры товара (поле chrtID с большой D)
                 sizes = card.get("sizes", [])
                 for size in sizes:
                     chrt_id = size.get("chrtID") or size.get("chrtId")
@@ -154,9 +150,8 @@ class WBSync:
             if total < limit:
                 break
         
-        print(f"Total products synced: {len(all_skus)}")
+        print(f"User {self.user_id}: products synced - {len(all_skus)}")
         
-        # Скрываем товары, которых нет в API
         all_products = self.db.query(Product).filter(
             Product.user_id == self.user_id
         ).all()
@@ -168,7 +163,7 @@ class WBSync:
                 hidden_count += 1
         
         if hidden_count > 0:
-            print(f"Hidden {hidden_count} products not found in API")
+            print(f"User {self.user_id}: hidden {hidden_count} products")
         
         self.db.commit()
         
@@ -180,11 +175,11 @@ class WBSync:
     # ==================== СКЛАДЫ FBS ====================
     
     def sync_fbs_warehouses(self) -> Dict:
-        print("Syncing FBS warehouses (seller's warehouses)...")
+        # print("Syncing FBS warehouses (seller's warehouses)...")  # закомментировано
         
         url = "https://marketplace-api.wildberries.ru/api/v3/warehouses"
         response = requests.get(url, headers=self._get_headers())
-        print(f"[WB API] GET /api/v3/warehouses -> Status: {response.status_code}")
+        # print(f"[WB API] GET /api/v3/warehouses -> Status: {response.status_code}")  # закомментировано
         
         if response.status_code != 200:
             raise Exception(f"Failed to fetch FBS warehouses: {response.status_code}")
@@ -223,18 +218,18 @@ class WBSync:
             Warehouse.type == "FBS"
         ).count()
         
-        print(f"FBS warehouses synced: {total} total, {new_count} new")
+        print(f"User {self.user_id}: FBS warehouses - {total} total, {new_count} new")
         
         return {"type": "FBS", "total": total, "new": new_count}
     
     # ==================== СКЛАДЫ FBO ====================
     
     def sync_fbo_warehouses(self) -> Dict:
-        print("Syncing FBO warehouses (WB's warehouses)...")
+        # print("Syncing FBO warehouses (WB's warehouses)...")  # закомментировано
         
         url = "https://marketplace-api.wildberries.ru/api/v3/offices"
         response = requests.get(url, headers=self._get_headers())
-        print(f"[WB API] GET /api/v3/offices -> Status: {response.status_code}")
+        # print(f"[WB API] GET /api/v3/offices -> Status: {response.status_code}")  # закомментировано
         
         if response.status_code != 200:
             raise Exception(f"Failed to fetch FBO warehouses: {response.status_code}")
@@ -274,7 +269,7 @@ class WBSync:
             Warehouse.type == "FBO"
         ).count()
         
-        print(f"FBO warehouses synced: {total} total, {new_count} new")
+        print(f"User {self.user_id}: FBO warehouses - {total} total, {new_count} new")
         
         return {"type": "FBO", "total": total, "new": new_count}
     
@@ -289,7 +284,7 @@ class WBSync:
             payload = {"chrtIds": chunk}
             
             response = requests.post(url, json=payload, headers=self._get_headers())
-            print(f"[WB API] POST /api/v3/stocks/{warehouse_id} -> Status: {response.status_code}")
+            # print(f"[WB API] POST /api/v3/stocks/{warehouse_id} -> Status: {response.status_code}")  # закомментировано
             
             if response.status_code != 200:
                 print(f"[WB API] Error response: {response.text[:500]}")
@@ -315,7 +310,7 @@ class WBSync:
             }
             
             response = requests.post(url, json=payload, headers=self._get_headers())
-            print(f"[WB API] POST /api/analytics/v1/stocks-report/wb-warehouses -> Status: {response.status_code}")
+            # print(f"[WB API] POST /api/analytics/v1/stocks-report/wb-warehouses -> Status: {response.status_code}")  # закомментировано
             
             if response.status_code != 200:
                 print(f"[WB API] Error response: {response.text[:500]}")
@@ -337,23 +332,20 @@ class WBSync:
         return all_stocks
     
     def sync_stocks(self) -> Dict:
-        print(f"Syncing stocks for user {self.user_id}")
+        print(f"User {self.user_id}: processing stocks...")
         
-        # Получаем все размеры товаров (chrt_id)
         product_sizes = self.db.query(ProductSize).filter(
             ProductSize.chrt_id.isnot(None)
         ).all()
         
         if not product_sizes:
-            print("No product sizes found")
+            print(f"User {self.user_id}: no product sizes found")
             return {"stocks_updated": 0, "fbs_warehouses_processed": 0, "fbo_warehouses_processed": 0}
         
-        # Создаём словарь chrt_id -> product_size
         chrt_to_size = {ps.chrt_id: ps for ps in product_sizes}
         all_chrt_ids = list(chrt_to_size.keys())
-        print(f"Found {len(all_chrt_ids)} unique chrt_ids")
+        # print(f"Found {len(all_chrt_ids)} unique chrt_ids")  # закомментировано
         
-        # Получаем склады FBS
         fbs_warehouses = self.db.query(Warehouse).filter(
             Warehouse.user_id == self.user_id,
             Warehouse.company_id == 1,
@@ -364,7 +356,7 @@ class WBSync:
         
         # FBS склады
         for warehouse in fbs_warehouses:
-            print(f"Processing FBS warehouse {warehouse.external_id}...")
+            # print(f"Processing FBS warehouse {warehouse.external_id}...")  # закомментировано
             stocks = self._fetch_stocks_for_fbs_warehouse(warehouse.external_id, all_chrt_ids)
             
             for stock_item in stocks:
@@ -409,7 +401,7 @@ class WBSync:
             
             warehouse.last_sync_at = datetime.now()
         
-        # FBO склады - получаем уникальные nmID товаров
+        # FBO склады
         products = self.db.query(Product).filter(
             Product.user_id == self.user_id,
             Product.wb_nm_id.isnot(None),
@@ -418,9 +410,8 @@ class WBSync:
         
         if products:
             nm_ids = list({p.wb_nm_id for p in products})
-            print(f"Found {len(nm_ids)} unique nm_ids for FBO")
+            # print(f"Found {len(nm_ids)} unique nm_ids for FBO")  # закомментировано
             
-            print("Processing FBO warehouses...")
             fbo_stocks = self._fetch_stocks_for_fbo_warehouse(nm_ids)
             
             for stock_item in fbo_stocks:
@@ -431,7 +422,6 @@ class WBSync:
                 if not nm_id:
                     continue
                 
-                # Находим товар по wb_nm_id
                 product = self.db.query(Product).filter(
                     Product.user_id == self.user_id,
                     Product.wb_nm_id == nm_id
@@ -440,7 +430,6 @@ class WBSync:
                 if not product:
                     continue
                 
-                # Находим или создаём склад FBO
                 warehouse = self.db.query(Warehouse).filter(
                     Warehouse.user_id == self.user_id,
                     Warehouse.company_id == 1,
@@ -449,7 +438,7 @@ class WBSync:
                 ).first()
                 
                 if not warehouse:
-                    print(f"Creating new FBO warehouse: {warehouse_id} - {stock_item.get('warehouseName')}")
+                    # print(f"Creating new FBO warehouse: {warehouse_id}")  # закомментировано
                     warehouse = Warehouse(
                         company_id=1,
                         user_id=self.user_id,
@@ -462,7 +451,6 @@ class WBSync:
                     self.db.commit()
                     self.db.refresh(warehouse)
                 
-                # Для FBO остатков размер может быть указан через chrtId
                 chrt_id = stock_item.get("chrtId")
                 size_id = None
                 if chrt_id and chrt_id in chrt_to_size:
@@ -492,7 +480,6 @@ class WBSync:
                 
                 total_updated += 1
             
-            # Обновляем время синхронизации для FBO складов
             fbo_warehouses = self.db.query(Warehouse).filter(
                 Warehouse.user_id == self.user_id,
                 Warehouse.company_id == 1,
@@ -503,18 +490,18 @@ class WBSync:
                 warehouse.last_sync_at = datetime.now()
         
         self.db.commit()
-        print(f"Total stocks updated: {total_updated}")
+        print(f"User {self.user_id}: stocks updated - {total_updated}")
         
         return {
             "stocks_updated": total_updated,
             "fbs_warehouses_processed": len(fbs_warehouses),
-            "fbo_warehouses_processed": len(fbo_warehouses) if products else 0
+            "fbo_warehouses_processed": len(products) if products else 0
         }
     
     # ==================== ПОЛНАЯ СИНХРОНИЗАЦИЯ ====================
     
     def full_sync(self) -> Dict:
-        print(f"Starting full sync for user {self.user_id}")
+        # print(f"Starting full sync for user {self.user_id}")  # закомментировано
         
         fbs_result = self.sync_fbs_warehouses()
         fbo_result = self.sync_fbo_warehouses()

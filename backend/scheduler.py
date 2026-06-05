@@ -3,11 +3,9 @@ from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime
 import logging
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Глобальный планировщик
 scheduler = BackgroundScheduler()
 
 def sync_all_users():
@@ -21,9 +19,8 @@ def sync_all_users():
         
         db = SessionLocal()
         
-        # Находим всех пользователей с активным API-ключом WB
         users_with_keys = db.query(User.id).join(CompanyApiKey).filter(
-            CompanyApiKey.company_id == 1,  # WB
+            CompanyApiKey.company_id == 1,
             CompanyApiKey.is_active == True
         ).distinct().all()
         
@@ -31,12 +28,11 @@ def sync_all_users():
         
         for user in users_with_keys:
             try:
-                logger.info(f"Syncing user {user.id}...")
                 syncer = WBSync(db, user.id)
                 result = syncer.full_sync()
-                logger.info(f"User {user.id} sync completed: {result}")
+                logger.info(f"User {user.id}: sync completed")
             except Exception as e:
-                logger.error(f"Failed to sync user {user.id}: {e}")
+                logger.error(f"User {user.id}: sync failed - {str(e)[:100]}")
         
         db.close()
         
@@ -45,8 +41,7 @@ def sync_all_users():
 
 def start_scheduler():
     """Запускает планировщик"""
-    # Добавляем задачу: каждые N минут
-    N=15
+    N = 15
     scheduler.add_job(
         func=sync_all_users,
         trigger=IntervalTrigger(minutes=N),
